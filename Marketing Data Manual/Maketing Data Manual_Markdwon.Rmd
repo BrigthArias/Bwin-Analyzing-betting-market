@@ -1,0 +1,523 @@
+---
+title: "MARKETING DATA MANUAL"
+author: "Brigth Arias and Josephine Schneegans"
+date: '2022-12-22'
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+subtitle: Business Analytics Tools Open Source
+---
+```{r data, include=FALSE}
+if(!require("haven")) install.packages(c("haven", "sas7bdat")); library("haven")
+
+DataI_Demo <- read_sas('C:\\Users\\bariastoribio\\OneDrive - IESEG\\IESEG 1_SEMESTER\\Business Analytics Tools_Open Source_R\\Group assignment\\Group Assignement_Files\\RawDataIDemographics.sas7bdat')
+
+DataII_Uda <- read_sas('C:\\Users\\bariastoribio\\OneDrive - IESEG\\IESEG 1_SEMESTER\\Business Analytics Tools_Open Source_R\\Group assignment\\Group Assignement_Files\\RawDataIIUserDailyAggregation.sas7bdat')
+
+DataIII_Pcc <- read_sas('C:\\Users\\bariastoribio\\OneDrive - IESEG\\IESEG 1_SEMESTER\\Business Analytics Tools_Open Source_R\\Group assignment\\Group Assignement_Files\\RawDataIIIPokerChipConversions.sas7bdat')
+
+```
+# Introduction
+
+The data mart called DataMartMarketing has been created in order to understand the behavior of gambling players, according to different characteristics and actions. To do so, we have used information from three datasets that gave us demographic, transactions and daily utilisation information but all poker insight. 
+
+Before starting the interpretation of the data, we had to clean and transform them in order to have useful and adequate datas. We were then able to create an organized datamart to optimize the creation of marketing insights like the Shiny App (vizualisation). 
+
+# Datasets
+
+We have started the work with three datasets, given in .SAS format read by 'read_sas' function.
+
+`DataI_Demo`
+
+```{r, echo=FALSE}
+ls(DataI_Demo)
+```
+`DataII_Uda`
+
+```{r,echo=FALSE}
+ls(DataII_Uda)
+```
+`DataIII_Pcc`
+```{r, echo=FALSE}
+ls(DataIII_Pcc)
+```
+
+# Data Processing
+#### Raw Datasets Cleaning  
+&nbsp;  
+&nbsp;  
+`DataI_Demo`
+
+* UserID was in numeric format so we changed it into character as we do not want UserID to be considerated as a number 
+
+* Dates were not in dates format, there were in character, numeric, date, integer... so we ha converting them into dates format 
+
+
+`DataII_Uda` 
+
+* UserID was in numeric format so we changed it into character as we do not want UserID to be considerated as a number 
+
+* The data was in charater so we change it as date format 
+
+* In order to have more practical numbers we have rouded Stakes and Winnings 
+
+
+`DataIII_Pcc` 
+
+* UserID was in numeric format so we changed it into character as we do not want UserID to be considerated as a number 
+
+* TransDateTime were not in dates format, there were in characterso we have converting them into dates format 
+
+* In order to have more practical numbers we have rouded TransAmount variable 
+
+
+#### Merging  
+&nbsp;  
+&nbsp;  
+We have created a DataMart by a full join merging between DataII_Uda and DataIII_Pcc on ‘ProductID’ and ‘UserID’ then the result has been left join with DataI_Demo on ‘UserID’. 
+
+#### DataMart Cleaning
+
+* We have drop NA value for FirstAct variable in order to take off clients who have missing value for the first active date 
+
+* We have excule record that from UserDailyAggregation that took place before the first pay-in date
+
+# Data Mart Marketing
+#### Metric
+&nbsp;  
+&nbsp;  
+`LOR`  
+
+DataMartMarketing$LOR <- as.integer(difftime(DataMartMarketing$Last_Active_Date, DataMartMarketing$First_Active_Date, units = c("days"))) 
+&nbsp;  
+
+#### Here we did a segmentation about loyalty of clients. To do so, we use the RFM method (recency/frequency/monetary) and we segmented the client into 5 categories:
+
+* Champions are your best customers, who bought most recently, most often, and are heavy spenders. Reward these customers. They can become early adopters for new products and will help promote your brand.
+
+* Potential Loyalists are your recent customers with average frequency and who spent a good amount. Offer membership or loyalty programs or recommend related products to upsell them and help them become your Loyalists or Champions.
+
+* New Customers are your customers who have a high overall RFM score but are not frequent shoppers. Start building relationships with these customers by providing onboarding support and special offers to increase their visits.
+
+* At Risk Customers are your customers who purchased often and spent big amounts, but haven’t purchased recently. Send them personalized reactivation campaigns to reconnect, and offer renewals and helpful products to encourage another purchase.
+
+* Can’t Lose Them are customers who used to visit and purchase quite often, but haven’t been visiting recently. Bring them back with relevant promotions, and run surveys to find out what went wrong and avoid losing them to a competitor.
+
+`RFM_score_betting` 
+
+RFM_score_betting = 100 *R_score +10 * F_score + M_score 
+
+
+`Loyalty_segmentation_bettings`
+
+Loyalty_segmentation_bettings= case_when( 
+
+  between(RFM_score_betting,0,89)~"Can’t Lose Them", 
+
+  between(RFM_score_betting,90,178)~"At Risk Customers", 
+
+  between(RFM_score_betting,179,266)~"New Customers", 
+
+  between(RFM_score_betting,267,355)~"Potential Loyalists", 
+
+  TRUE~"Champions")) 
+
+`RFM_score_pokerChip` 
+
+RFM_score_pokerChip = 100 *R_score +10 * F_score + M_score 
+
+`Loyalty_segmentation_pokerChip`
+
+Loyalty_segmentation_pokerChip= case_when( 
+
+  between(RFM_score_pokerChip,0,89)~"Can’t Lose Them", 
+
+  between(RFM_score_pokerChip,90,178)~"At Risk Customers", 
+
+  between(RFM_score_pokerChip,179,266)~"New Customers", 
+
+  between(RFM_score_pokerChip,267,355)~"Potential Loyalists", 
+
+  TRUE~"Champions")) 
+
+##### Here we have calculations (min/max/avg/sum) of transaction amount (buy and sell)
+&nbsp;  
+&nbsp;  
+`MaxPokerTransDate` 
+
+MaxPokerTransDate = max(TransDatePoker) 
+
+`MinPokerTransDate` 
+
+MinPokerTransDate = min(TransDatePoker) 
+
+`TotalPokerTranSell` 
+
+TotalPokerTranSell = sum(TransAmount[TransType==24]) 
+
+`TotalPokerTranBuy` 
+
+TotalPokerTranBuy = sum(TransAmount[TransType==124]) 
+
+`MaxPokerTranSell` 
+
+MaxPokerTranSell = max(TransAmount[TransType==24]) 
+
+`MaxPokerTranBuy` 
+
+MaxPokerTranBuy = max(TransAmount[TransType==124]) 
+
+`MinPokerTranSell` 
+
+MinPokerTranSell = min(TransAmount[TransType==24]) 
+
+`MinPokerTranBuy` 
+
+MinPokerTranBuy = min(TransAmount[TransType==124]) 
+
+`AvgPokerTranSell` 
+
+AvgPokerTranSell = mean(TransAmount[TransType==24]) 
+
+`AvgPokerTranBuy` 
+
+AvgPokerTranBuy = mean(TransAmount[TransType==124]) 
+
+`CountPokerTranSell` 
+
+CountPokerTranSell = sum(TransType==24) 
+
+`CountPokerTranBuy` 
+
+CountPokerTranBuy = sum(TransType==124) 
+
+`NumberOfProducts` *calculation of the total product per customer*
+
+NumberOfProducts = length(unique(ProductID, na.rm = TRUE)) 
+
+`Total_Stakes` *calculation of the total stakes per clients *
+
+total_stakes <- data.frame(UserID = DataMart$UserID, Stakes = DataMart$Stakes) 
+
+head(total_stakes) 
+
+total_stakes <- total_stakes %>%                               
+
+  group_by(UserID) %>% 
+
+  summarise(Total_Stakes = sum(Stakes, na.rm = TRUE)) 
+
+`Total_Winnings` *calculation of the total winnings by clients* 
+
+total_winnings <- data.frame(UserID = DataMart$UserID, Winnings = DataMart$Winnings) 
+
+head(total_winnings) 
+
+total_winnings <- total_winnings %>%                               
+
+  group_by(UserID) %>% 
+
+  summarise(Total_Winnings = sum(Winnings, na.rm = TRUE)) 
+
+`Total_Bets` *calculation of the total bets per clients* 
+
+total_bets <- data.frame(UserID = DataMart$UserID, Bets = DataMart$Bets) 
+
+total_bets <- total_bets %>% 
+
+  group_by(UserID) %>% 
+
+  summarise(Total_Bets = sum(Bets, na.rm = TRUE)) 
+
+`Final_balance` 
+
+final_balance = Total_Winnings - Total_Stakes 
+
+##### Here we have calculated some variables in order to have metrics per visit
+&nbsp;  
+&nbsp;  
+`NumDaysOfVisited` 
+
+NumDaysOfVisited = n_distinct(Date) 
+
+`Avg_winnings_per_visit` 
+
+avg_winnings_per_visit = mean(Winnings) 
+
+`Avg_stakes_per_visit` 
+
+avg_stakes_per_visit = mean(Stakes) 
+
+`Avg_bets_per_visit` 
+
+avg_bets_per_visit = mean(Bets) 
+
+`Ratio_win_stake` 
+
+ratio_win_stake = avg_winnings_per_visit/avg_stakes_per_visit 
+\newpage
+
+# Marketing Insight
+
+#### Bettings and loyalty
+&nbsp;  
+&nbsp;  
+The following barchart is representing the number of client of each Bettings Segmentation:
+
+```{r echo=FALSE, warning=FALSE, message = FALSE}
+load("C:\\Users\\bariastoribio\\OneDrive - IESEG\\IESEG 1_SEMESTER\\Business Analytics Tools_Open Source_R\\Group assignment\\Group Assignement_Files\\DataMartMarketing.RData")
+
+
+library(ggplot2)
+if(!require("dplyr")) install.packages("dplyr"); library("dplyr")
+
+DataMartMarketing%>%
+  arrange(Country_Name)%>%
+  filter(!is.na(Loyalty_segmentation_bettings))%>%
+  ggplot() + geom_bar(aes(x = factor(Loyalty_segmentation_bettings, level = c('Can’t Lose Them',"At Risk Customers","New Customers","Potential Loyalists","Champions")),
+                          fill = Loyalty_segmentation_bettings),
+                      fill="lightblue",width=0.2)+
+  theme_bw() +
+  coord_flip() +
+  theme(axis.text.x=element_text(angle=0,hjust=1), legend.position="none") +
+  scale_fill_hue(c = 40) +
+  xlab("")+
+  ylab("Frecuency") +
+  labs(title = "Loyalty Segmentation of Bettings")+
+  theme(plot.title = element_text(hjust = 0.5)) 
+```
+Here we can see the number of bettings per segment. The most represented segment is the Potential Loyalist, with more than 10500 bettings. They are the recent customers with average frequency and good amount spending  and the less represented segment is the New Customers with less than 750 bettings. They are customers that have a high RFM but they are not frequent clients.
+
+\newpage
+
+#### Pokerchip and Loyalty
+&nbsp;  
+&nbsp;  
+The following barchart is representing the number of client of each PockerChip Segmentation:
+
+```{r echo=FALSE, warning=FALSE, message = FALSE}
+load("C:\\Users\\bariastoribio\\OneDrive - IESEG\\IESEG 1_SEMESTER\\Business Analytics Tools_Open Source_R\\Group assignment\\Group Assignement_Files\\DataMartMarketing.RData")
+
+if(!require("ggplot2")) install.packages("ggplot2"); library("ggplot2")
+if(!require("dplyr")) install.packages("dplyr"); library("dplyr")
+
+library(ggplot2)
+library(forcats)
+
+  DataMartMarketing%>%
+    arrange(Country_Name)%>%
+    filter(!is.na(Loyalty_segmentation_pokerChip))%>%
+    ggplot() + geom_bar(aes(x = factor(Loyalty_segmentation_pokerChip, level = c('Can’t Lose Them',"At Risk Customers","New Customers","Potential Loyalists","Champions"))
+                            , fill = Loyalty_segmentation_pokerChip),fill="orange",width=0.2) +
+    theme_bw() +
+    coord_flip() +
+    theme(axis.text.x=element_text(angle=0,hjust=1), legend.position="none") +
+    scale_fill_hue(c = 40) +
+    xlab("")+
+    ylab("Frecuency") +
+    labs(title = "Loyalty Segmentation of Poker")+
+    theme(plot.title = element_text(hjust = 0.5))
+
+```
+Here we can see the number of bettings per segment. The most represented segment are the At Risk Customers and the Can't Lose Them, with 600 PockerChip purchase1. At Risk Customers are the one that are often purchasing with big amount but not recently and Can't Lose Them are the clients who used to purchased and visit often but not recently. The less represented segment is the New Customers with less than 100 PockerChip purshase. They are customers that have a high RFM but they are not frequent clients.
+
+\newpage
+
+#### Client and Country
+&nbsp;  
+&nbsp; 
+The following barchart is representing the number of client of each different country:
+
+```{r echo=FALSE, warning=FALSE, message = FALSE}
+load("C:\\Users\\bariastoribio\\OneDrive - IESEG\\IESEG 1_SEMESTER\\Business Analytics Tools_Open Source_R\\Group assignment\\Group Assignement_Files\\DataMartMarketing.RData")
+
+library(ggplot2)
+if(!require("dplyr")) install.packages("dplyr"); library("dplyr")
+
+graph_countries <-     DataMartMarketing%>%
+  group_by(Country_Name)%>%
+  summarise(NCountry = n())%>%
+  arrange(desc(NCountry))%>%
+  slice(1:10)%>%
+  ungroup()%>%
+  mutate(Country_Name = fct_reorder(Country_Name, NCountry))%>%
+  ggplot(aes(x=Country_Name, y=NCountry))+
+  geom_segment( aes(xend=Country_Name, yend=0)) +
+  geom_point( size=6, color="orange") +
+  coord_flip() +
+  theme_bw() +
+  xlab("")+
+  ylab("Frecuency")+
+  labs(title = "Top 10 country distribution of users")+
+  theme(plot.title = element_text(hjust = 0.5))
+
+graph_countries
+
+```
+The most represented Country is by far Germany with more than 22500 clients. Then we have a group of four Country, Turkey, Spain, Greece and Poland that all have approximately 2500 clients and then we have France, Danemark, Autria, Italy and Switzerland that have between 1300 and 600 clients. 
+
+\newpage
+
+#### Gender repartition by country
+&nbsp;  
+&nbsp;  
+The following graphic is showing the client's repartition of female and male by country: 
+
+```{r echo=FALSE, warning=FALSE, message = FALSE}
+load("C:\\Users\\bariastoribio\\OneDrive - IESEG\\IESEG 1_SEMESTER\\Business Analytics Tools_Open Source_R\\Group assignment\\Group Assignement_Files\\DataMartMarketing.RData")
+
+library(ggplot2)
+if(!require("dplyr")) install.packages("dplyr"); library("dplyr")
+
+graph_genderBycountry <- DataMartMarketing%>%
+  group_by(Country_Name, Gender)%>%
+  summarise(Count = n())%>%
+  arrange(Country_Name)%>%
+  filter(Count>100)%>%
+  ungroup()%>%
+  ggplot(aes(x=Count, y=Country_Name)) + 
+  geom_bar(position = "dodge",stat = "identity", aes(fill=Gender)) +
+  labs(title= "Country customers by gender",
+       x = "Customers",
+       y = "Country and Gender") 
+
+graph_genderBycountry
+
+
+```
+Here we have the customer group by gender and country. The most represented clients are male from Germany. We can see that in every country, female are really less represented, so we can assume that in general, clients are mostly males.
+
+\newpage
+
+#### Language repartition
+&nbsp;  
+&nbsp;  
+The following graphic is showing the client language's repartition:
+
+```{r echo=FALSE, warning=FALSE, message = FALSE}
+load("C:\\Users\\bariastoribio\\OneDrive - IESEG\\IESEG 1_SEMESTER\\Business Analytics Tools_Open Source_R\\Group assignment\\Group Assignement_Files\\DataMartMarketing.RData")
+
+library(ggplot2)
+if(!require("dplyr")) install.packages("dplyr"); library("dplyr")
+
+graph_language <-     DataMartMarketing%>%
+  group_by(Language_Description)%>%
+  summarise(Count = n())%>%
+  arrange(desc(Count))%>%
+  slice(1:17)%>%
+  ungroup()%>%
+  mutate(Language_Description = fct_reorder(Language_Description, Count))%>%
+  ggplot(aes(x=Language_Description, y=Count))+
+  geom_segment( aes(xend=Language_Description, yend=0)) +
+  geom_point( size=6, color="orange") +
+  coord_flip() +
+  theme_bw() +
+  xlab("")+
+  ylab("Frecuency")+
+  labs(title = "Language distribution of users")+
+  theme(plot.title = element_text(hjust = 0.5))
+
+graph_language
+
+```
+As we see previously, Germany is the country with the most clients. We can see on this graph that German is the most spoken language with more than 25000 clients, and then we have a group of five languages: Turkish, Greek, Spanish, Polish and French with a little bit less than 2500 clients, then we have Danish, English, Italian ad Norwegian speakers that have less than 4000 clients.
+
+\newpage
+
+#### First active day by gender
+&nbsp;  
+&nbsp;  
+The following plot shows the frecuency of first active day of the month of the users:
+
+```{r echo=FALSE, warning=FALSE, message = FALSE}
+load("C:\\Users\\bariastoribio\\OneDrive - IESEG\\IESEG 1_SEMESTER\\Business Analytics Tools_Open Source_R\\Group assignment\\Group Assignement_Files\\DataMartMarketing.RData")
+
+library(ggplot2)
+if(!require("dplyr")) install.packages("dplyr"); library("dplyr")
+if(!require("lubridate")) install.packages("lubridate"); library("lubridate")
+
+first_active_day_gender <-     DataMartMarketing%>%
+  mutate(day = day(First_Active_Date))%>%
+  group_by(Gender, day)%>%
+  summarise(count=n())%>%
+  ggplot()+
+  geom_line(aes(x=day,y=count, color = Gender))+
+  xlim(c(1,30))+
+  theme_bw()+
+  xlab("Days") +
+  ylab("Frecuency") +
+  labs(title = "First active day distribution by gender")+
+  theme(plot.title = element_text(hjust = 0.5))
+  
+first_active_day_gender 
+
+```
+In this graph we can see two important things: First the male has more active days frecuency of first activation day than female, and there are more first activation during the last days of the month.
+
+
+\newpage
+
+#### Application repartition
+&nbsp;  
+&nbsp;  
+The following barchart is representing the number of client for each different application:
+
+```{r echo=FALSE, warning=FALSE, message = FALSE}
+load("C:\\Users\\bariastoribio\\OneDrive - IESEG\\IESEG 1_SEMESTER\\Business Analytics Tools_Open Source_R\\Group assignment\\Group Assignement_Files\\DataMartMarketing.RData")
+
+library(ggplot2)
+if(!require("dplyr")) install.packages("dplyr"); library("dplyr")
+if(!require("lubridate")) install.packages("lubridate"); library("lubridate")
+
+graph_app <- DataMartMarketing%>%
+  group_by(Application_Description)%>%
+  summarise(NApp = n())%>%
+  arrange(desc(NApp))%>%
+  slice(1:10)%>%
+  ungroup()%>%
+  mutate(Application_Description = fct_reorder(Application_Description, NApp))%>%
+  ggplot(aes(x = Application_Description, y= NApp)) + 
+  geom_bar(stat="identity", position="identity",fill="orange",width=0.2)+
+  theme(axis.text.x=element_text(angle=90,hjust=1)) +
+  labs(title = "Barplot for Application")+
+  theme_bw() +
+  coord_flip()+
+  xlab("Application") +
+  ylab("Frecuency")
+  
+
+graph_app
+
+```
+As we can see, the top 5 routes more used to access to bwin are Betandwin.de, Betandwin.com, Beteurope.com and Betoto.com.
+
+\newpage
+
+# Link of the application
+
+The synthesis of the analysis has been created by Shiny app, which can be viewed at the following link: https://brigthygaby.shinyapps.io/OnlineGambling/ 
+
+# References
+
+https://medium.com/analytics-vidhya/customer-segmentation-using-rfm-analysis-in-r-cd8ba4e6891
+
+https://www.programmingr.com/rfm-analysis/
+
+http://rstudio.github.io/shinydashboard/ 
+
+https://github.com/fondaa/bigdata/blob/main/Gambling%20Company%20Market%20Analysis%20with%20R.R
+
+https://github.com/Tutoman/Betwin-Datamart/blob/main/Datamart_Code.ipynb
+
+https://clevertap.com/blog/rfm-analysis/#:~:text=RFM%20Score%20Finally%2C%20we%20can%20rank%20these%20customers,by%20giving%20equal%20weights%20to%20each%20RFM%20attribute
+
+https://rstudio.github.io/shinydashboard/
+
+https://stackoverflow.com/questions/24027605/determine-the-number-of-na-values-in-a-column
+
+https://r-graph-gallery.com/267-reorder-a-variable-in-ggplot2.html
+
+https://9to5answer.com/finding-the-max-of-a-r-dataframe-column-ignoring-inf-and-na
+
+https://github.com/rstudio/shiny-examples/tree/main/087-crandash
